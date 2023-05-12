@@ -4,13 +4,20 @@ const sql = require("../db/sql"); // 在 ../db/sql.js 中创建了连接池
 
 // 创建商品接口
 router.post("/productCreate", (req, res) => {
-  const { name, price, inventory, description, store_name } = req.body;
+  const {
+    product_name,
+    product_description,
+    store_name,
+    classify_name,
+    product_specification,
+    product_attribute,
+  } = req.body;
 
   // 查询对应的店铺ID
   const getStoreIdSql = `SELECT store_id FROM shops WHERE store_name = ?`;
   const getStoreIdValues = [store_name];
   sql.query(getStoreIdSql, getStoreIdValues, (error, results, fields) => {
-    console.log(results);
+    // console.log(results[0].store_id);
     if (error) {
       console.error("Error querying store_id from shops table: ", error);
       return res.status(500).json({
@@ -21,54 +28,174 @@ router.post("/productCreate", (req, res) => {
 
     // 获取到店铺ID后，查询该店铺是否已存在同名商品
     const store_id = results[0].store_id;
+    console.log(store_id);
     const checkProductSql = `SELECT COUNT(*) as count FROM product WHERE store_id = ? AND product_name = ?`;
-    const checkProductValues = [store_id, name];
+    const checkProductValues = [store_id, product_name];
     sql.query(checkProductSql, checkProductValues, (error, results, fields) => {
+      // console.log(results);
       if (error) {
         console.error("Error querying product table: ", error);
         return res.status(500).json({
           code: 500,
           message: "Error querying product table",
         });
-      }
+      } else {
+        const count = results[0].count;
+        if (count > 0) {
+          console.log("存在同名商品！无法添加");
+          // 存在同名商品，返回错误响应
+          return res.send({
+            code: 400,
+            message: "店铺中已经存在同名商品！无法添加，请更改商品名称！",
+          });
+        } else {
+          // 获取到店铺ID后，将数据插入到 product 表中
+          const insertProductSql = `INSERT INTO product (product_name, product_description, store_id, store_name, classify_name) VALUES (?, ?, ?, ?, ?)`;
+          const insertProductValues = [
+            product_name,
+            product_description,
+            store_id,
+            store_name,
+            classify_name,
+          ];
 
-      const count = results[0].count;
-      if (count > 0) {
-        // 存在同名商品，返回错误响应
-        return res.status(400).json({
-          code: 400,
-          message: "The same product name already exists in this store",
-        });
-      }
+          // 查询是否存在相同的分类名称
+          const selectProductClassifySql = `SELECT COUNT(*) AS count FROM product_classify WHERE store_name = ? AND classify_name = ?`;
+          const selectProductClassifyValues = [store_name, classify_name];
+          sql.query(
+            selectProductClassifySql,
+            selectProductClassifyValues,
+            (error, results, fields) => {
+              if (error) {
+                console.error("Error querying product_classify table: ", error);
+                return res.status(500).json({
+                  code: 500,
+                  message: "Error querying product_classify table",
+                });
+              }
 
-      // 获取到店铺ID后，将数据插入到 product 表中
-      const store_id = results[0].store_id;
-      const insertProductSql = `INSERT INTO product (product_name, product_price, product_inventory, product_description, store_id, store_name) VALUES (?, ?, ?, ?, ?, ?)`;
-      const insertProductValues = [
-        name,
-        price,
-        inventory,
-        description,
-        store_id,
-        store_name,
-      ];
+              const count1 = results[0].count;
+              console.log("count1", count1);
 
-      sql.query(
-        insertProductSql,
-        insertProductValues,
-        (error, results, fields) => {
-          if (error) {
-            console.error("Error inserting into product table: ", error);
-            return res.status(500).json({
-              code: 500,
-              message: "Error inserting into product table",
-            });
-          }
-          return res
-            .status(200)
-            .json({ code: 200, message: "Product added successfully" });
+              if (count1 === 0) {
+                // 不存在相同的分类名称，执行插入操作
+                const insertProductClassifySql = `INSERT INTO product_classify (store_name, classify_name) VALUES (?, ?)`;
+                const insertProductClassifyValues = [store_name, classify_name];
+                sql.query(
+                  insertProductClassifySql,
+                  insertProductClassifyValues,
+                  (error, results, fields) => {
+                    if (error) {
+                      console.error(
+                        "Error inserting into product_classify table: ",
+                        error
+                      );
+                      return res.status(500).json({
+                        code: 500,
+                        message: "Error inserting into product_classify table",
+                      });
+                    }
+                  }
+                );
+              }
+
+              // 完成商品分类以后，再插入商品
+              sql.query(
+                insertProductSql,
+                insertProductValues,
+                (error, results, fields) => {
+                  if (error) {
+                    console.error(
+                      "Error inserting into product table: ",
+                      error
+                    );
+                    return res.status(500).json({
+                      code: 500,
+                      message: "Error inserting into product table",
+                    });
+                  }
+                }
+              );
+
+              // 插入商品以后，再插入商品规格
+              product_specification.map((item) => {
+                const { name, value, price } = item;
+                console.log("name:", name);
+                const insertProductSpecificationSql = `INSERT INTO product_specification (product_name, specification_name, specification_value, specification_price) VALUES (?, ?, ?, ?)`;
+                const insertProductSpecificationValues = [
+                  product_name,
+                  name,
+                  value,
+                  price,
+                ];
+                sql.query(
+                  insertProductSpecificationSql,
+                  insertProductSpecificationValues,
+                  (error, results, fields) => {
+                    if (error) {
+                      console.error(
+                        "Error inserting into product_specification table: ",
+                        error
+                      );
+                      return res.status(500).json({
+                        code: 500,
+                        message:
+                          "Error inserting into product_specification table",
+                      });
+                    }
+                  }
+                );
+              });
+              // 如果商品没有属性
+              if (product_attribute.length === 0) {
+                return res.send({
+                  code: 200,
+                  message: "商品添加成功！",
+                });
+              } else {
+                // 如果商品有属性
+                // 插入商品规格以后，再插入商品属性
+                product_attribute.map((item) => {
+                  console.log(item);
+                  const { name, domains } = item;
+                  domains.map((item1) => {
+                    const { value } = item1;
+                    const insertProductAttributeSql = `INSERT INTO product_attribute (product_name, attribute_name, attribute_value) VALUES (?, ?, ?)`;
+                    const insertProductAttributeValues = [
+                      product_name,
+                      name,
+                      value,
+                    ];
+                    // console.log("insertProductAttributeValues:", insertProductAttributeValues);
+                    sql.query(
+                      insertProductAttributeSql,
+                      insertProductAttributeValues,
+                      (error, results, fields) => {
+                        if (error) {
+                          console.error(
+                            "Error inserting into product_attribute table: ",
+                            error
+                          );
+                          return res.status(500).json({
+                            code: 500,
+                            message:
+                              "Error inserting into product_attribute table",
+                          });
+                        }
+                        // 到此为止全部插入成功，即为商品创建成功
+                        return res.send({
+                          code: 200,
+                          message: "商品创建成功！",
+                        });
+                      }
+                    );
+                  });
+                });
+              }
+            }
+          );
         }
-      );
+      }
     });
   });
 });
@@ -98,14 +225,79 @@ router.post("/", (req, res) => {
 });
 
 // 商品分类查询接口
-router.get("/productClassify", (req, res) => {
-  sql.query("select * from product_classify", (error, results) => {
-    res.send({
-      code: 200,
-      message: "查询成功！",
-      data: results,
-    });
+router.post("/productClassify", (req, res) => {
+  const { store_name } = req.body;
+  const query = `SELECT * FROM product_classify WHERE store_name = '${store_name}'`;
+  sql.query(query, (error, results, fields) => {
+    if (error) {
+      res.send({
+        code: 500,
+        message: "查询错误，请稍后重试",
+        data: results,
+      });
+    } else if (results.length == 0) {
+      res.send({
+        code: 400,
+        message: "店铺不存在或此店铺下不存在任何商品分类！",
+      });
+    } else {
+      res.send({ code: 200, message: "查询成功！", data: results });
+    }
   });
 });
+
+// 新建商品分类
+router.post("/newProductClassify", (req, res) => {
+  console.log("req.body:", req.body);
+  const {store_name, newClassify} = req.body
+  // 查询是否存在相同的分类名称
+  const selectProductClassifySql = `SELECT COUNT(*) AS count FROM product_classify WHERE store_name = ? AND classify_name = ?`;
+  const ProductClassifyValues = [store_name, newClassify];
+  sql.query(selectProductClassifySql, ProductClassifyValues, (error, results, fields) => {
+    if (error) {
+      console.error("Error querying product_classify table: ", error);
+      return res.send({
+        code: 500,
+        message: "未知错误！请稍后重试！",
+      });
+    }
+
+
+
+    const count = results[0].count;
+    console.log("count", count);
+
+    if (count === 0) {
+      // 不存在相同的分类名称，执行插入操作
+      const insertProductClassifySql = `INSERT INTO product_classify (store_name, classify_name) VALUES (?, ?)`;
+      sql.query(
+        insertProductClassifySql,
+        ProductClassifyValues,
+        (error, results, fields) => {
+          if (error) {
+            console.error(
+              "Error inserting into product_classify table: ",
+              error
+            );
+            return res.send({
+              code: 500,
+              message: "未知错误！请稍后重试",
+            });
+          }
+          return res.send({
+            code: 200,
+            message: "商品分类创建成功！",
+          });
+        }
+      );
+    } else {
+      // 存在相同的分类名称，返回错误信息
+      return res.send({
+        code: 400,
+        message: "此分类名称已存在！",
+      });
+    }
+  })
+})
 
 module.exports = router;

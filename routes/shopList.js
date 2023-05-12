@@ -68,7 +68,6 @@ router.get('/', (req, res, next) => {
 // 查询classify表中的所有数据
 router.get('/classify', (req, res, next) => {
   sql.query('select * from classify', function(error,results){
-    console.log(results);
     res.send({
       code:200,
       data:results  
