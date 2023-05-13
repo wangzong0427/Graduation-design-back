@@ -1,6 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const sql = require("../db/sql"); // 在 ../db/sql.js 中创建了连接池
+const multer = require("multer");
+const fs = require("fs");
+
+var storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    //文件保存路径
+    cb(null, "public/images/product/");
+  },
+  filename: function (req, file, cb) {
+    //存储文件名
+    cb(null, file.originalname);
+  },
+});
+
+var upload = multer({ storage: storage });
 
 // 创建商品接口
 router.post("/productCreate", (req, res) => {
@@ -223,6 +238,70 @@ router.post("/", (req, res) => {
     }
   });
 });
+// 删除商品
+router.post("/deleteProduct", (req, res) => {
+  const {product_id} =req.body
+  console.log(req.body);
+  const sqlDeleteProduct = "delete from product where product_id = ?"
+  sql.query(sqlDeleteProduct, [product_id], (err, results) => {
+    if(err) {
+      return res.send({
+        code: 500,
+        message: "删除商品失败"
+      })
+    }else {
+      return res.send({
+        code: 200,
+        message: "删除商品成功"
+      })
+    }
+  })
+})
+// 图片上传
+router.post("/image", upload.single("file"), (req, res) => {
+  // 获取上传的文件信息
+  const file = req.file;
+  const product_id = req.body.product_id;
+  // 构建插入数据库的SQL查询
+  const sqlInsert =
+    "UPDATE product set image_name = ?, image_path = ? where product_id = ?";
+  const values = [file.originalname, file.path, product_id];
+  console.log(values);
+  // 执行SQL查询
+  sql.query(sqlInsert, values, (err, result) => {
+    if (err) {
+      console.error("Error uploading image: ", err);
+      return res.send({
+        code: 500,
+        message: "图片上传失败",
+      });
+    } else {
+      console.log("Image uploaded successfully");
+      return res.send({
+        code: 200,
+        message: "图片上传成功",
+      });
+    }
+  });
+});
+// 图片删除
+router.post("/deleteImage", (req, res) => {
+  const { product_id, image_path } = req.body
+  const sqlDeleteImage = "UPDATE product SET image_path = NULL, image_name = NULL WHERE product_id = ?"
+  sql.query(sqlDeleteImage, [product_id], (err, results) => {
+    if(err) {
+      return res.send({
+        code: 500,
+        message: "删除图片失败！"
+      })
+    }
+    fs.unlink(image_path, () => {})
+    return res.send({
+      code: 200,
+      message: "删除图片成功"
+    })
+  })
+})
 
 // 商品分类查询接口
 router.post("/productClassify", (req, res) => {
