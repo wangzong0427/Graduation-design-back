@@ -64,7 +64,8 @@ router.post("/deleteImage", (req, res) => {
 
 
 router.post("/shops", (req, res) => {
-  const { phoneNumber, name, recommend, cooperation, business, classify } =
+  console.log(req.body);
+  const { phoneNumber, name, recommend, cooperation, business, classify, store_id } =
     req.body; // 采用了ES6的解构赋值语法
 
   let query = "SELECT * FROM shops WHERE 1 = 1"; // 1 = 1 是为了避免没有查询条件的情况下出现语法错误
@@ -91,6 +92,10 @@ router.post("/shops", (req, res) => {
 
   if (classify) {
     query += ` AND classify_name = '${classify}'`;
+  }
+
+  if (store_id) {
+    query += ` AND store_id = '${store_id}' `
   }
 
   // 执行查询并返回结果
