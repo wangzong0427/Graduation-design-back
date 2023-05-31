@@ -98,6 +98,8 @@ router.post("/shops", (req, res) => {
     query += ` AND store_id = '${store_id}' `
   }
 
+  query += " ORDER BY business_status DESC"
+
   // 执行查询并返回结果
   sql.query(query, (err, results) => {
     console.log(query);
@@ -130,5 +132,25 @@ router.get("/classify", (req, res, next) => {
     });
   });
 });
+
+// 更新店铺数据
+router.post("/update", (req, res) => {
+  const { store_id, store_name, contact_phone, information, business_status, cooperation_status, recommend_status, classify_name, image_name, image_path } = req.body
+  const sqlUpdate = "UPDATE shops SET store_name = ?, contact_phone = ?, information = ?, business_status = ?, cooperation_status = ?, recommend_status = ?, classify_name = ?, image_name = ?, image_path = ? WHERE store_id = ?"
+  const values = [store_name, contact_phone, information, business_status, cooperation_status, recommend_status, classify_name, image_name, image_path, store_id]
+  sql.query(sqlUpdate, values, (err, results) => {
+    if(err) {
+      console.log(err);
+      return res.send({
+        code: 500,
+        message: "更新失败！"
+      })
+    }
+    return res.send({
+      code: 200,
+      message: "更新成功！"
+    })
+  })
+})
 
 module.exports = router;

@@ -46,13 +46,13 @@ router.post("/", (req, res) => {
     if (err) {
       return res.send({
         code: 500,
-        message: "登录失败!",
+        message: "登录失败!服务器错误！",
       });
     }
     if (result.length == 0) {
       return res.send({
         code: 500,
-        message: "登录失败!",
+        message: "登录失败!用户名错误！",
       });
     }
     res.send({

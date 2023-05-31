@@ -444,4 +444,25 @@ router.post("/deleteProductClassify", (req, res) => {
   );
 });
 
+// 餐品更新
+router.post("/update", (req, res) => {
+  const { classify_name, image_name, image_path, product_attribute, product_description, product_id, product_name, product_specification, store_id, store_name } = req.body
+  const sqlUpdate = `UPDATE product SET classify_name = ?, product_description = ?, product_name = ?, store_id = ?, store_name = ? WHERE product_id = ?`
+  const values = [classify_name, product_description, product_name, store_id, store_name, product_id]
+  sql.query(sqlUpdate, values, (err, results) => {
+    if (err) {
+      console.log(err);
+      return res.send({
+        code: 500,
+        message: "更新失败",
+      });
+    } else {
+      return res.send({
+        code: 200,
+        message: "更新成功",
+      });
+    }
+  });
+})
+
 module.exports = router;
