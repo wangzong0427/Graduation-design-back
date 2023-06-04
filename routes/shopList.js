@@ -54,7 +54,7 @@ router.post("/deleteImage", (req, res) => {
         message: "删除头像失败！"
       })
     }
-    fs.unlink(image_path, () => {})
+    fs.unlink(image_path, () => {}) // 删除文件
     return res.send({
       code: 200,
       message: "删除头像成功"
@@ -79,15 +79,15 @@ router.post("/shops", (req, res) => {
   }
 
   if (recommend) {
-    query += ` AND recommend = '${recommend}'`;
+    query += ` AND recommend_status = '${recommend}'`;
   }
 
   if (cooperation) {
-    query += ` AND cooperation = '${cooperation}'`;
+    query += ` AND cooperation_status = '${cooperation}'`;
   }
 
   if (business) {
-    query += ` AND business = '${business}'`;
+    query += ` AND business_status = '${business}'`;
   }
 
   if (classify) {
