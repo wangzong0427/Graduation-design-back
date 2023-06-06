@@ -153,4 +153,23 @@ router.post("/update", (req, res) => {
   })
 })
 
+// 删除店铺
+router.post("/delete", (req, res) => {
+  const store_id = req.body.store_id
+  const sqlDelete = "DELETE FROM shops WHERE store_id = ?"
+  sql.query(sqlDelete, [store_id], (err, results) => {
+    if(err) {
+      console.log(err);
+      return res.send({
+        code: 500,
+        message: "店铺删除失败！"
+      })
+    }
+    return res.send({
+      code: 200,
+      message: "店铺删除成功！"
+    })
+  })
+});
+
 module.exports = router;

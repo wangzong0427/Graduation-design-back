@@ -46,13 +46,13 @@ router.post("/", (req, res) => {
     if (err) {
       return res.send({
         code: 500,
-        message: "登录失败!服务器错误！",
+        message: "服务器错误！",
       });
     }
     if (result.length == 0) {
       return res.send({
         code: 500,
-        message: "登录失败!用户名错误！",
+        message: "用户名或密码错误",
       });
     }
     res.send({
@@ -73,6 +73,7 @@ router.post("/list", (req, res) => {
   if (user_name) {
     query += ` and user_name = '${user_name}'`;
   }
+  console.log(query);
   sql.query(query, (err, results) => {
     if (err) {
       return res.send({
